@@ -1,0 +1,130 @@
+{
+ "split": "2023-07-01",
+ "chosen": {
+  "dim7_curve": "D2_flat",
+  "dim8_curve": "E1_emp",
+  "weights": {
+   "dim1": 0.23,
+   "dim2": 0.3,
+   "dim3": 0.1,
+   "dim4": 0.11,
+   "dim5": 0.03,
+   "dim6": 0.01,
+   "dim7": 0.12,
+   "dim8": 0.1
+  },
+  "weights_changed": false,
+  "use_window_feature": true,
+  "calib_pts": [
+   [
+    0,
+    2.5411715744015106
+   ],
+   [
+    45.0,
+    0.0
+   ],
+   [
+    55.0,
+    3.0494058892818128
+   ],
+   [
+    65.0,
+    11.9435063996871
+   ],
+   [
+    75.0,
+    22.997602748333676
+   ],
+   [
+    85.0,
+    57.30341900275407
+   ],
+   [
+    95.0,
+    87.92453647429228
+   ],
+   [
+    130,
+    87.92453647429228
+   ]
+  ]
+ },
+ "metrics": {
+  "baseline_combo_auc": 0.732,
+  "final_combo_auc": 0.75,
+  "train_hold_auc_final": [
+   0.786,
+   0.722
+  ],
+  "train_hold_auc_window": [
+   0.786,
+   0.727
+  ],
+  "brier_old": [
+   0.1452,
+   0.2689
+  ],
+  "brier_new": [
+   0.1422,
+   0.2307
+  ],
+  "auc_4dim_baseline": 0.719
+ },
+ "curve_results": [
+  {
+   "dim7": "D2_flat",
+   "dim8": "E1_emp",
+   "train": 0.786,
+   "hold": 0.722
+  },
+  {
+   "dim7": "D2_flat",
+   "dim8": "E2_r300",
+   "train": 0.784,
+   "hold": 0.724
+  },
+  {
+   "dim7": "D1_hybrid",
+   "dim8": "E1_emp",
+   "train": 0.783,
+   "hold": 0.72
+  },
+  {
+   "dim7": "D1_hybrid",
+   "dim8": "E2_r300",
+   "train": 0.782,
+   "hold": 0.723
+  },
+  {
+   "dim7": "D0_cur",
+   "dim8": "E1_emp",
+   "train": 0.781,
+   "hold": 0.718
+  },
+  {
+   "dim7": "D0_cur",
+   "dim8": "E2_r300",
+   "train": 0.779,
+   "hold": 0.72
+  },
+  {
+   "dim7": "D2_flat",
+   "dim8": "E0_cur",
+   "train": 0.76,
+   "hold": 0.725
+  },
+  {
+   "dim7": "D1_hybrid",
+   "dim8": "E0_cur",
+   "train": 0.757,
+   "hold": 0.723
+  },
+  {
+   "dim7": "D0_cur",
+   "dim8": "E0_cur",
+   "train": 0.754,
+   "hold": 0.72
+  }
+ ]
+}

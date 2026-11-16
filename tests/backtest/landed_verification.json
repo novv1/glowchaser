@@ -1,0 +1,12 @@
+{
+ "curve_max_diff": {
+  "dim2": 0.05000000000000426,
+  "dim7": 0.04999999999999716,
+  "dim8": 0.04999999999999716
+ },
+ "curve_consistent": true,
+ "auc_all": 0.75,
+ "auc_train": 0.786,
+ "auc_hold": 0.722,
+ "brier_hold": 0.2306
+}

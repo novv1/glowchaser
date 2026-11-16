@@ -1,0 +1,35 @@
+{
+ "split": "2023-07-01",
+ "results": [
+  {
+   "name": "S0_baseline",
+   "auc_train": 0.787,
+   "auc_hold": 0.724
+  },
+  {
+   "name": "S1_cv3(w=0.02)",
+   "auc_train": 0.785,
+   "auc_hold": 0.732
+  },
+  {
+   "name": "S2_slope5(k=24)",
+   "auc_train": 0.794,
+   "auc_hold": 0.725
+  },
+  {
+   "name": "S3_dlow(k=0.5)",
+   "auc_train": 0.781,
+   "auc_hold": 0.702
+  },
+  {
+   "name": "S4_hfrac(k=10)",
+   "auc_train": 0.797,
+   "auc_hold": 0.726
+  },
+  {
+   "name": "S5_dim1w2",
+   "auc_train": 0.787,
+   "auc_hold": 0.724
+  }
+ ]
+}

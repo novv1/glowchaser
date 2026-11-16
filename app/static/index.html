@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>逐光者 GlowChaser · 火烧云与悬日月预测</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='80' font-size='80'%3E%F0%9F%8C%87%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="vendor/leaflet.css?v=74">
+<link rel="stylesheet" href="style.css?v=74">
+<link rel="stylesheet" href="cinema.css?v=74">
+</head>
+<body>
+<!-- 氛围层：颗粒 + 暗角（纯装饰，不参与交互） -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vig" aria-hidden="true"></div>
+<!-- 环境光层：三团随主题变色的极光 + 颗粒 +（深色）星点。
+     纯装饰，pointer-events:none，不参与交互与无障碍树。 -->
+<div class="ambient" aria-hidden="true">
+  <span class="amb-blob amb-1"></span>
+  <span class="amb-blob amb-2"></span>
+  <span class="amb-blob amb-3"></span>
+  <span class="amb-stars"></span>
+  <span class="amb-grain"></span>
+</div>
+
+<header class="topbar slate" id="slate">
+  <div class="sl-brand"><b>逐光者</b><i>GLOWCHASER</i></div>
+  <div class="seg sl-mode" id="modeSeg" role="group" aria-label="预测模式">
+    <button data-v="glow" class="active">霞光</button>
+    <button data-v="align">悬日月</button>
+  </div>
+  <div class="sl-ctx">
+    <select id="citySel" aria-label="选择城市"></select>
+    <div class="seg" id="dateSeg" role="group" aria-label="快捷日期">
+      <button data-v="today" class="active">今天</button>
+      <button data-v="tomorrow">明天</button>
+    </div>
+    <input type="date" id="dateSel" class="date-input" title="选择任意日期" aria-label="选择日期">
+    <span id="dateLabel" class="date-label">--</span>
+    <div class="seg" id="subSeg" role="group" aria-label="朝霞或晚霞">
+      <button data-v="sunset" class="active">晚霞</button>
+      <button data-v="sunrise">朝霞</button>
+    </div>
+  </div>
+  <button id="btnGo" class="primary cn-action">查询</button>
+  <div class="sl-status" id="slStatus" aria-live="polite"></div>
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+</header>
+<!-- film burn 转场闪场（仅 cinema 点亮；纯装饰，不参与交互） -->
+<div class="burn" id="burn" aria-hidden="true"></div>
+<div id="cacheBanner" class="warn-banner" style="display:none"></div>
+<!-- v2.36：参数改过但还没查询——提醒用户点「查询」再发请求（不再自动查上游） -->
+<div id="queryHint" class="warn-banner" style="display:none"></div>
+
+<nav class="tabnav scenenav" id="tabnav" role="tablist" aria-label="报告分区">
+  <a class="active" id="tabBtn-tonight" href="#sec-tonight" data-sec="tonight" role="tab" aria-selected="true">
+    <svg class="tbi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13a8 8 0 0 1 16 0"/><path d="M12 13l4.6-3.6"/><circle cx="12" cy="13" r="1.7" fill="currentColor" stroke="none"/></svg>
+    <span><i class="cn-no" aria-hidden="true">壹</i>今晚</span></a>
+  <a id="tabBtn-evidence" href="#sec-evidence" data-sec="evidence" role="tab" aria-selected="false">
+    <svg class="tbi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+    <span><i class="cn-no" aria-hidden="true">贰</i>证据</span></a>
+  <a id="tabBtn-deep" href="#sec-deep" data-sec="deep" role="tab" aria-selected="false">
+    <svg class="tbi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 14.2l9 5 9-5"/></svg>
+    <span><i class="cn-no" aria-hidden="true">叁</i>深看</span></a>
+  <a id="tabBtn-log" href="#sec-log" data-sec="log" role="tab" aria-selected="false">
+    <svg class="tbi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+    <span><i class="cn-no" aria-hidden="true">肆</i>记录</span></a>
+</nav>
+
+<main id="app">
+  <div id="loading" class="loading cn-clap" style="display:none">
+    <div class="cn-clapbd" aria-hidden="true">
+      <div class="cn-hinge"></div>
+      <div class="cn-slat cn-upper"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="cn-slat cn-lower"><span class="cn-stxt">逐光者 · 正在取数</span></div>
+    </div>
+    <div class="load-head">
+      <span class="load-spin" aria-hidden="true"></span>
+      <span id="loadStage">正在获取多模式气象数据…</span>
+      <button id="btnLoadCancel" type="button" class="load-cancel">取消</button>
+    </div>
+    <div class="load-bar" aria-hidden="true"><i></i></div>
+    <div class="load-note">多模式取数与光路采样通常需要 10–30 秒</div>
+    <div class="skl skl-hero"></div>
+    <div class="skl skl-line" style="width:58%"></div>
+    <div class="skl skl-line" style="width:82%"></div>
+    <div class="skl skl-card"></div>
+    <div class="skl skl-card"></div>
+  </div>
+
+  <!-- v2.36：进入页面不再自动查询，先给空态；点「查询」才请求上游 -->
+  <section class="card idle-card cn-idle" id="idleCard" style="display:none">
+    <div class="cn-ingest" aria-hidden="true">选一场景，打板开拍。</div>
+    <h3><i></i><span>还没开始查询</span></h3>
+    <p class="desc">上面选好城市、日期与事件（晚霞/朝霞、悬日/悬月）后，
+      点「查询 / 查询天气」按钮开始预测。打开页面不会自动请求气象数据，
+      因此不会平白消耗 Open-Meteo 的免费用量。</p>
+    <div class="align-input" style="margin-bottom:0">
+      <button id="btnIdleGo" class="primary">查询</button>
+    </div>
+  </section>
+
+  <section class="card err-card cn-ng" id="errCard" style="display:none">
+    <div class="cn-ngflag" aria-hidden="true">取数失败</div>
+    <h3><i></i><span id="errTitle">数据获取失败</span></h3>
+    <p class="desc" id="errMsg"></p>
+    <div class="align-input" style="margin-bottom:0">
+      <button id="btnErrRetry" class="primary cn-retake">重试</button>
+      <button id="btnErrRestore" style="display:none">查看上一份报告</button>
+    </div>
+  </section>
+
+  <div id="glowView">
+  <div id="report-flow">
+
+  <i class="cn-anchor" id="sec-tonight" aria-hidden="true"></i>
+  <!-- 壹 · 今晚：永远展开，首屏就要给答案 -->
+<section class="hero" id="heroCard" style="display:none">
+  <div class="cn-beam" id="beam" aria-hidden="true"></div>
+  <div class="stage cn-stage" id="heroStage">
+    <div class="frame cn-frame" id="heroFrame" role="img" aria-label="晚霞场景帧">
+      <canvas id="cvSky"></canvas>
+      <div class="water" id="Lwater" aria-hidden="true"><div class="road" id="waterRoad"></div></div>
+      <svg class="ridges" id="Lridges" viewBox="0 0 1200 130" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,130 L0,80 L140,48 L260,76 L380,40 L520,72 L640,48 L760,74 L900,38 L1040,70 L1200,46 L1200,130 Z" fill="rgba(14,12,18,.95)"/>
+        <path d="M0,130 L0,100 L200,84 L420,102 L660,86 L880,104 L1200,90 L1200,130 Z" fill="rgba(8,7,12,.98)"/>
+        <g aria-hidden="true">
+          <rect x="1018" y="30" width="7" height="42" fill="rgba(10,9,14,.98)"/>
+          <rect x="1014" y="24" width="15" height="7" fill="rgba(10,9,14,.98)"/>
+          <circle class="cn-beacon" cx="1021.5" cy="20" r="4" fill="#ff4a3c"/>
+        </g>
+      </svg>
+      <div class="citylights" id="citylights" aria-hidden="true"></div>
+      <canvas id="cvRain" aria-hidden="true"></canvas>
+      <div id="Lbolt" aria-hidden="true"><svg id="boltSvg" viewBox="0 0 1200 500" preserveAspectRatio="none"></svg></div>
+      <div class="screenflash" id="screenflash" aria-hidden="true"></div>
+      <div class="hero-veil" aria-hidden="true"></div>
+
+      <!-- 答案层：一屏之内回答「今晚拍不拍」 -->
+      <div class="hero-answer">
+        <h1 class="hero-h1" id="heroTitle">晚霞预测报告</h1>
+        <div class="ha-kick" id="heroSub">珠海 · 晚霞预测</div>
+        <div class="ha-headline" id="heroHeadline">等一场天晴。</div>
+        <div class="ha-nums">
+          <span class="ha-prob" id="heroProb">--%</span>
+          <span class="ha-chip" id="heroVerdict">--</span>
+        </div>
+        <p class="ha-reason" id="heroReason"></p>
+        <div class="ha-meta">
+          <span id="heroDate"></span>
+          <span id="heroCred"></span>
+          <span id="heroUncert" style="display:none"></span>
+        </div>
+        <button id="btnShare" class="share-btn">📸 生成分享图</button>
+      </div>
+    </div>
+    <div class="frame-meta" aria-hidden="true">
+      <span><span class="rec"><i></i>REC</span> <b id="frameTc">--:--:--:--</b></span>
+      <span id="frameMetaC">CI · LIT 78% · ALT -2.0°</span>
+      <span id="frameMetaR">-- · AZ --°</span>
+    </div>
+  </div>
+
+  <!-- 决策带：几点到 / 朝哪站 / 去哪拍 —— 三个问题在首屏一次答完 -->
+  <div class="decide" role="list">
+    <div class="decide-cell" role="listitem">
+      <b>几点到</b>
+      <span class="dc-v" id="decideWindow">--</span>
+      <i id="decideWindowHint">建议提前 20 分钟到场</i>
+    </div>
+    <div class="decide-cell" role="listitem">
+      <b>朝哪站</b>
+      <span class="dc-v" id="decideDir">--</span>
+      <i>面向开阔天际线，避开正前方遮挡</i>
+    </div>
+    <div class="decide-cell" role="listitem">
+      <b>去哪拍</b>
+      <span class="dc-v" id="decideSpot">--</span>
+      <i id="decideSpotHint">地图里可看火烧云覆盖范围</i>
+    </div>
+  </div>
+
+  </section>
+<section class="card highlight cn-logline cn-reveal" id="briefCard" style="display:none">
+    <h3 class="cn-chapter"><span class="cn-chno" aria-hidden="true">00</span>📋 今日简报</h3>
+    <div id="briefText" class="best-text"></div>
+  </section>
+<section class="card cn-filmstrip cn-reveal" id="weekCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>未来 14 天火烧云概率概览</h3>
+    <div class="cn-sprockets" aria-hidden="true"></div>
+    <div class="wx-grid" id="weekGrid" style="grid-template-columns:repeat(7,1fr)"></div>
+    <div class="cn-sprockets" aria-hidden="true"></div>
+  </section>
+
+  <i class="cn-anchor" id="sec-evidence" aria-hidden="true"></i>
+  <section class="tier" data-tier="evidence">
+    <header class="tier-head">
+      <span class="tier-no" aria-hidden="true">贰</span>
+      <div class="tier-txt">
+        <h2>证据</h2>
+        <p>8 维度拆解 · 4 模式对照 · 火烧云覆盖图</p>
+      </div>
+      <button type="button" class="tier-toggle" aria-expanded="false" aria-controls="tierBody-evidence">展开</button>
+    </header>
+    <div class="tier-body" id="tierBody-evidence" hidden>
+      <section class="card cn-craft cn-reveal" id="dimsCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>8 维度评估体系</h3>
+          <div id="dimsList"></div>
+        </section>
+      <section class="card cn-reveal" id="modelCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>多模式分别预测</h3>
+          <table class="tbl" id="modelTbl"></table>
+          <div class="note" id="modelNote"></div>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="mapCard" style="display:none">
+          <div class="cn-monbar"><span>MAP A · 火烧云</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>火烧云预测地图（广东）</h3>
+          <div class="seg" id="mapModeSeg">
+            <button data-v="prob" class="active">概率分</button>
+            <button data-v="quality">质量分</button>
+          </div>
+          <div class="sweep-ctrl" id="sweepCtrl">
+            <button id="sweepPlay" title="播放扫掠动画" aria-label="播放扫掠动画" aria-pressed="false">▶</button>
+            <input type="range" id="sweepSlider" min="0" max="40" step="1" value="0">
+            <span id="sweepLabel">日落时刻</span>
+          </div>
+          <div class="pick-row">
+            <button id="btnPickMode" class="pick-toggle">📍 选点模式：关</button>
+            <input type="number" id="pickLat" placeholder="纬度" step="0.0001">
+            <input type="number" id="pickLon" placeholder="经度" step="0.0001">
+            <button id="btnPickGo">探测坐标</button>
+          </div>
+          <div id="pickResult" style="display:none"></div>
+          <div class="map-meta" id="mapMeta"></div>
+          <div id="burnMap" class="map-box"></div>
+          <div class="map-note">底图：阿里 DataV GeoAtlas · 网格为多模式均值估算，色阶为该地火烧云条件分。拖动时间滑块观看霞光带随日落线扫过云层的推进过程。</div>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="revCard" style="display:none">
+          <div class="cn-monbar"><span>MAP B · 反烧</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>反烧 ☁（余晖）预测地图</h3>
+          <p class="desc">太阳位于地平线下方时，其光线从下方斜照亮反方向高空中云，形成"反烧/余晖"（晚霞之后或朝霞之前）。浅蓝色带为地影暗区（照不到）。</p>
+          <div id="revMap" class="map-box"></div>
+          <div class="map-note" id="revNote"></div>
+        </section>
+      <section class="card cn-credits cn-reveal" id="wxCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>关键气象要素 · <span id="wxModel"></span></h3>
+          <div class="wx-grid" id="wxGrid"></div>
+        </section>
+      <section class="card cn-double cn-reveal" id="compareCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>城市对比 <span>今晚去哪拍 · 珠三角多城并排</span></h3>
+          <div class="align-input" id="compareCities"></div>
+          <button id="btnCompare" class="primary">对比选中城市</button>
+          <div id="compareResult" style="margin-top:14px"></div>
+        </section>
+      <section class="card cn-also cn-reveal" id="rankCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>附近城市晚霞排行榜 <span>格点评分 · 每城市取最优</span></h3>
+          <div class="seg" id="rankSeg" style="margin-bottom:12px">
+            <button data-v="prob" class="active">火烧云指数</button>
+            <button data-v="quality">通透质量</button>
+          </div>
+          <div id="rankList"></div>
+          <div class="map-note">按观测点周边格点评分排序（每城市取最优格点），点击行可将该地设为位置查看完整报告。</div>
+        </section>
+    </div>
+  </section>
+
+  <i class="cn-anchor" id="sec-deep" aria-hidden="true"></i>
+  <section class="tier" data-tier="deep">
+    <header class="tier-head">
+      <span class="tier-no" aria-hidden="true">叁</span>
+      <div class="tier-txt">
+        <h2>深看</h2>
+        <p>大气剖面 · 温度探空 · 卫星临近 · 日月轨迹</p>
+      </div>
+      <button type="button" class="tier-toggle" aria-expanded="false" aria-controls="tierBody-deep">展开</button>
+    </header>
+    <div class="tier-body" id="tierBody-deep" hidden>
+      <section class="card cn-monitor cn-reveal" id="csCard" style="display:none">
+          <div class="cn-monbar"><span>MONITOR B · 光路截面</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>大气截面图 · 光路主要城市</h3>
+          <p class="desc" id="csDesc"></p>
+          <div class="sweep-ctrl" id="csCtrl" style="display:none">
+            <button id="csPlay" title="播放时间演变" aria-label="播放时间演变" aria-pressed="false">▶</button>
+            <input type="range" id="csSlider" min="0" max="7" step="1" value="7">
+            <span id="csLabel">事件时刻</span>
+          </div>
+          <div id="crossSection" class="cs-box"></div>
+          <div class="map-note" id="csIllumNote" style="display:none"></div>
+          <ul class="risk-list" id="pathAnalysis" style="margin-top:12px"></ul>
+          <details class="howto">
+            <summary>读图方法</summary>
+            <ul>
+              <li>横轴：从观测点沿日落/日出方向的光路城市，按距离排序</li>
+              <li>纵轴：高度（km），850~200hPa 位势换算</li>
+              <li>蓝色深浅：高层相对湿度 —— 越蓝越湿，越可能成云</li>
+              <li>灰幕下沿为<b>地影线</b>：线下方的云已进入地球阴影、不再被太阳照亮
+                （线随滑块时刻下沉，即"低云先黑、高云续烧"）</li>
+              <li>青色虚线为 <b>0°C 层</b>：该高度以上云顶温度已在冰点以下（冰晶主导，
+                反光更亮；线不出现 = 整层冰点以上）</li>
+              <li>光路西侧高湿层 + 云带 → 最可能烧成火烧云</li>
+              <li>拖动时间滑块：观看 T-6h ~ T+1h 光路湿度剖面的演变</li>
+            </ul>
+          </details>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="soundCard" style="display:none">
+          <div class="cn-monbar"><span>MONITOR C · 探空</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>温度探空 · 露点廓线 <span>ECMWF 气压层 5 层 + 地面 · 事件时刻</span></h3>
+          <p class="desc" id="soundDesc"></p>
+          <div id="soundChart" class="cs-box"></div>
+          <details class="howto">
+            <summary>读图方法</summary>
+            <ul>
+              <li>橙线=气温 T，蓝虚线=露点 Td；两线贴近（T−Td ≤ 2°C）= 该层接近饱和，
+                  成的云更"实"、不易出幡状拖尾</li>
+              <li>青色竖线 = <b>0°C 层</b>：其上云顶温度在冰点以下（冰晶主导，反光更亮）</li>
+              <li>这是模式 5 层粗廓线（+地面 2m），用于量级判断；逐层精确探空需
+                  radiosonde 对账（待接）</li>
+            </ul>
+          </details>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="pmCard" style="display:none">
+          <div class="cn-monbar"><span>MAP C · 通透度</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>PM2.5 分布（μg/m³）</h3>
+          <p class="desc">PM2.5 直接决定大气通透度：颗粒物越少越通透，晚霞/火烧云颜色越鲜艳；PM2.5 高（雾霾）则灰暗。</p>
+          <div id="pmMap" class="map-box"></div>
+          <div class="map-note">数据：Open-Meteo air-quality（CAMS）· 当日关键时均值</div>
+        </section>
+      <section class="card cn-monitor live cn-reveal" id="nowcastCard" style="display:none">
+          <div class="cn-monbar"><span><span class="cn-live" aria-hidden="true">● LIVE</span> MONITOR B · 现场回传 · HIMAWARI-9 B13</span></div>
+          <span class="cn-corner tl" aria-hidden="true"></span><span class="cn-corner tr" aria-hidden="true"></span><span class="cn-corner bl" aria-hidden="true"></span><span class="cn-corner br" aria-hidden="true"></span>
+          <h3><i></i>卫星临近校准 <span>Himawari-9 B13 红外 · JMA 实时</span></h3>
+          <div id="nowcastMeta" class="map-meta"></div>
+          <div class="nowcast-flex">
+            <img id="nowcastImg" class="nowcast-img" alt="卫星光路裁剪"
+                 onerror="this.style.display='none'">
+            <ul id="nowcastJudgments" class="risk-list" style="flex:1"></ul>
+          </div>
+          <div class="sweep-ctrl" id="nowcastCtrl" style="display:none">
+            <button id="nowcastPlay" title="播放最近 80 分钟云带移动" aria-label="播放最近 80 分钟云带移动" aria-pressed="false">▶</button>
+            <input type="range" id="nowcastSlider" min="0" max="7" step="1" value="0">
+            <span id="nowcastSlot">最新帧</span>
+          </div>
+          <div class="map-note" id="nowcastHint"></div>
+          <div class="map-note">亮 = 冷 = 中高云；暗 = 暖 = 晴空/低云。橙线为沿日落/日出方向的光路采样（0-580km）；OBS = 机位、TGT = 目标方位方向，图上另有比例尺与指北针。图源 JMA MSC，10 分钟更新；拖动时间轴可看云带移动（离事件越近越可信）。</div>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="astroCard" style="display:none">
+          <div class="cn-monbar"><span>STAR CHART · 星图</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>日月高度角曲线（24h）</h3>
+          <div id="altChart" style="height:280px;margin-bottom:12px"></div>
+          <table class="tbl" id="astroTbl"></table>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="skyCard" style="display:none">
+          <div class="cn-monbar"><span>MONITOR A · 霞光模拟</span><span class="cn-tc" id="skyTc">--:--:--:--</span></div>
+          <span class="cn-corner tl" aria-hidden="true"></span><span class="cn-corner tr" aria-hidden="true"></span><span class="cn-corner bl" aria-hidden="true"></span><span class="cn-corner br" aria-hidden="true"></span>
+          <h3><i></i>霞光模拟 <span>太阳高度角驱动 · 云量/光路/通透度推演</span></h3>
+          <div class="sweep-ctrl" id="skyCtrl">
+            <button id="skyPlay" title="播放霞光演变" aria-label="播放霞光演变" aria-pressed="false">▶</button>
+            <input type="range" id="skySlider" min="-20" max="40" step="1" value="0">
+            <span id="skyLabel">事件时刻</span>
+          </div>
+          <canvas id="skyCanvas" class="sky-box" width="1200" height="420"></canvas>
+          <div class="map-note" id="skyNote"></div>
+        </section>
+      <section class="dark-card cn-monitor cn-reveal" id="t48Card" style="display:none">
+          <div class="cn-monbar"><span>MONITOR D · 两周表</span><span>14 DAYS</span></div>
+          <h3 class="cn-chapter">未来两周模式预报 <span>Open-Meteo · 七模式平均</span></h3>
+          <p>云量分层（每3小时，单位%）七模式平均</p>
+          <table class="tbl dark" id="t48Tbl"></table>
+          <p style="margin-top:14px">气象要素（每3小时：气温°C / 降水mm / 风速km/h / 能见度km / AOD）</p>
+          <table class="tbl dark" id="wxTbl"></table>
+        </section>
+      <section class="card cn-monitor cn-reveal" id="horizonCard" style="display:none">
+          <div class="cn-monbar"><span>HORIZON MAP · 地平线</span><span class="cn-live">● LIVE</span></div>
+          <h3 class="cn-chapter"><i></i>悬日月地平线可见性地图</h3>
+          <p class="desc">评估各地在日/月贴近地平线时刻（月出+1h≈10°、月落-1h、日出/日落）看见它们的概率与通透质量：低云全遮挡、中云部分遮挡、高云薄透，并计入 CAMS 气溶胶通透度。热力越红 = 越值得去。</p>
+          <div class="align-input">
+            <div class="seg" id="hEventSeg">
+              <button data-v="moon_rise" class="active">🌙 月出</button>
+              <button data-v="moon_set">🌙 月落</button>
+              <button data-v="sun_rise">☀ 日出</button>
+              <button data-v="sun_set">☀ 日落</button>
+            </div>
+            <button id="btnHorizon" class="primary">生成热力图</button>
+          </div>
+          <div class="map-meta" id="horizonMeta"></div>
+          <div id="horizonMap" class="map-box"></div>
+          <div class="map-note" id="horizonNote">事件时刻按观测点天文推算（月出/月落/日出/日落独立计算），全区统一取该时刻所在小时评估（网格内时刻差 &lt;25 分钟）。</div>
+        </section>
+      <section class="card cn-reveal" id="alignEntryCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>悬日 / 悬月 <span>低角度对准与天体预览</span></h3>
+          <p class="desc">查询太阳/月亮低角度对准目标方位的时间窗，并结合云况给出可见概率与固定取景框预览。已升级为独立模式：顶栏切到「☀ 悬日月」即可使用日出/日落、月出/月落选择、悬日月日历与地平线热力图。</p>
+          <div id="alignEntryBody" class="map-note"></div>
+          <div style="margin-top:10px">
+            <button id="btnEnterAlign" class="primary">进入悬日月模式 →</button>
+          </div>
+        </section>
+    </div>
+  </section>
+
+  <i class="cn-anchor" id="sec-log" aria-hidden="true"></i>
+  <section class="tier" data-tier="log">
+    <header class="tier-head">
+      <span class="tier-no" aria-hidden="true">肆</span>
+      <div class="tier-txt">
+        <h2>记录</h2>
+        <p>翻车风险 · 实况回填</p>
+      </div>
+      <button type="button" class="tier-toggle" aria-expanded="false" aria-controls="tierBody-log">展开</button>
+    </header>
+    <div class="tier-body" id="tierBody-log" hidden>
+      <section class="card cn-prodnotes cn-reveal" id="riskCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>翻车风险提示</h3>
+          <ul class="risk-list" id="riskList"></ul>
+        </section>
+      <section class="card cn-aud cn-reveal" id="feedbackCard" style="display:none">
+          <h3 class="cn-chapter"><i></i>实况回填 <span>积累本地验证数据，逐月提升校准精度</span></h3>
+          <p class="desc" id="fbText"></p>
+          <div class="seg" id="fbSeg">
+            <button data-v="不烧">不烧</button>
+            <button data-v="微烧">微烧</button>
+            <button data-v="小烧">小烧</button>
+            <button data-v="中烧">中烧</button>
+            <button data-v="大烧">大烧</button>
+          </div>
+          <div style="margin-top:10px"><button id="btnFeedback" class="primary">提交实况</button>
+          <span id="fbDone" style="color:#4a8a4a;font-weight:600;display:none">已记录，谢谢！</span></div>
+        </section>
+    </div>
+  </section>
+</div>
+</div>
+
+  <div id="alignView" style="display:none">
+
+  <div id="staleBanner" class="map-note" style="display:none;background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px"></div>
+
+  <!-- ① 机位与目标 -->
+  <section class="card cn-reveal" id="alignSetupCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>① 机位与目标 <span>搜目标点 / 地图点选 —— 无需巧摄文件</span></h3>
+    <div class="align-input">
+      <div class="srch" data-role="cam">
+        <span class="srch-ico" aria-hidden="true">📷</span>
+        <input id="alignCamSearch" type="search" autocomplete="off"
+               spellcheck="false"
+               placeholder="搜机位（默认当前城市，也可点地图）"
+               aria-label="搜索机位">
+        <button class="srch-clr" type="button" title="清空" hidden
+                aria-label="清空机位搜索">✕</button>
+        <span class="srch-spin" hidden aria-hidden="true"></span>
+        <div class="srch-panel" id="alignCamResults" hidden></div>
+      </div>
+      <button id="btnAlignCamSearch" class="srch-go">搜索</button>
+    </div>
+    <div class="align-input">
+      <div class="srch" data-role="target">
+        <span class="srch-ico" aria-hidden="true">🎯</span>
+        <input id="alignTargetSearch" type="search" autocomplete="off"
+               spellcheck="false"
+               placeholder="搜目标点（如 港珠澳大桥、广州塔，搜到即判断）"
+               aria-label="搜索目标点">
+        <button class="srch-clr" type="button" title="清空" hidden
+                aria-label="清空目标搜索">✕</button>
+        <span class="srch-spin" hidden aria-hidden="true"></span>
+        <div class="srch-panel" id="alignTargetResults" hidden></div>
+      </div>
+      <button id="btnAlignTargetSearch" class="srch-go primary">搜索</button>
+    </div>
+    <div class="align-input" style="margin-bottom:6px">
+      <label>底图 <select id="alignMapSrc">
+        <option value="amap">高德矢量</option>
+        <option value="amap_sat">高德影像</option>
+        <option value="esri_sat">Esri 卫星</option>
+        <option value="osm">OpenStreetMap</option>
+      </select></label>
+      <span class="kv" id="alignMapSrcNote">底图来自外部瓦片服务</span>
+    </div>
+    <div id="alignMap" class="map-box" style="height:380px"></div>
+    <div class="map-note" id="alignMapNote">搜到目标点即自动取「机位→目标」连线的方位并立即判断天气。点地图可设为机位（未设置时用当前城市）。</div>
+    <div class="align-input">
+      <span class="kv">机位 <b id="alignCamTxt">--</b></span>
+      <span class="kv">目标 <b id="alignTargetTxt">--</b></span>
+      <span class="kv">方位 <b id="alignAzTxt">--</b></span>
+      <button id="btnAlignClearCam">清除机位</button>
+      <button id="btnAlignClear">清除目标</button>
+    </div>
+    <div class="align-input">
+      <label>机位高度 <input type="number" id="camHeightInput" min="0" max="9000"
+             step="10" placeholder="地形" style="width:88px"> m 海拔</label>
+      <label>目标高度 <input type="number" id="targetHeightInput" min="0"
+             max="9000" step="1" placeholder="0" style="width:88px"> m 海拔</label>
+      <span class="kv" id="alignHeightTxt">--</span>
+      <button id="btnAlignHeightClear">清除高度</button>
+    </div>
+    <div class="align-input">
+      <label>目标方位 <input type="number" id="azInput" min="0" max="360" step="0.1" value="270"> °</label>
+      <label>视场角 <input type="number" id="aovInput" min="0.5" max="60" step="0.5" value="3"> °</label>
+      <label>目标仰角 <input type="number" id="elevInput" min="-10" max="60" step="0.1" value="0"> °</label>
+      <button id="btnAlign" class="primary">查询天气</button>
+    </div>
+    <div class="map-note" id="alignSetupNote">方位来自「机位→目标」连线（可手动微调）。填机位/目标海拔后自动反推目标仰角，并把机位抬高计入视线几何（可见地平线下沉、遮蔽云距收缩）；手动改过目标仰角则以手动值为准。</div>
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;font-size:13px">巧摄 .pft 导入（可选）</summary>
+      <div class="align-input" style="margin-top:8px">
+        <input type="file" id="pftFile" accept=".pft" style="font-size:12px">
+        <button id="btnPft" title="导入巧摄 .pft：自动填入机位/方位/视场/仰角">导入并评估</button>
+      </div>
+      <p class="desc">导入后自动填入机位/方位/视场/仰角，并扫描未来 90 天日/月穿过取景框的时刻与天气判定。规划归巧摄，天气归逐光者。</p>
+      <table class="tbl" id="pftTbl" style="display:none"></table>
+    </details>
+  </section>
+
+  <!-- 悬日月 -->
+  <section class="card cn-reveal" id="alignCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>② 时间与事件 <span id="alignTitle">--</span></h3>
+    <div class="seg align-event-seg" id="alignEventSeg"></div>
+    <div class="map-note" id="alignDayWx" style="margin:8px 0"></div>
+    <div id="alignHero" class="align-hero cn-frame" style="display:none">
+      <div class="align-hero-score">
+        <div class="align-score" id="alignScore">--</div>
+        <div class="align-score-label">天气可行性</div>
+      </div>
+      <div class="align-hero-body">
+        <div class="align-verdict" id="alignVerdict">--</div>
+        <div class="align-facts" id="alignFacts"></div>
+        <div class="align-reason" id="alignReason"></div>
+        <button id="btnAlignShare" class="share-btn" style="margin-top:8px">📸 生成分享图</button>
+      </div>
+    </div>
+    <div id="alignShareWrap" style="display:none;text-align:center;margin-top:10px">
+      <img id="alignSharePreview" alt="分享图预览" style="max-width:280px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.3)">
+      <div style="margin-top:8px">
+        <a id="alignShareDownload" class="primary" download="glowchaser-align.png" style="display:inline-block;text-decoration:none">下载图片</a>
+        <button id="alignShareClose" style="margin-left:8px">关闭</button>
+      </div>
+    </div>
+    <table class="tbl" id="alignTbl"></table>
+    <div id="celestialWrap" style="display:none">
+      <h3 class="cn-chapter" style="margin-top:18px"><i></i>天体预览 <span>画面即相机取景 · 时间滑块看天体移动</span></h3>
+      <div class="align-input" id="pvToolbar">
+        <select id="pvWindowSel" title="选择日期与时刻"></select>
+        <label title="等效焦距（全画幅 36mm 画幅宽）；改这里会同步改动「视场角」并按新视场重算窗口">焦距
+          <input type="number" id="focalInput" min="10" max="3000" step="10" value="687"> mm
+        </label>
+        <span class="pv-presets" id="focalPresets"></span>
+      </div>
+      <!-- 画布 = 相机画面：3:2 与全画幅画幅一致，焦距换算才严格成立 -->
+      <div class="cn-monitor cn-viewfinder">
+        <div class="cn-monbar"><span>VIEWFINDER · 取景器</span><span class="cn-live">● LIVE</span></div>
+        <span class="cn-corner tl"></span><span class="cn-corner tr"></span>
+        <span class="cn-corner bl"></span><span class="cn-corner br"></span>
+      <canvas id="celestialCanvas" class="sky-box" width="1200" height="800"></canvas>
+      </div>
+      <div class="sweep-ctrl" id="pvCtrl">
+        <button id="pvPlay" title="播放天体移动" aria-label="播放天体移动" aria-pressed="false">▶</button>
+        <input type="range" id="pvSlider" min="-30" max="30" step="1" value="0">
+        <span id="pvLabel">对准时刻</span>
+      </div>
+      <div class="map-note" id="celestialNote">画面就是相机取景范围：焦距可在上方设定（全画幅等效 36mm，24–1200mm 常用焦段一键切换），圆盘按真实角径落位——所以它在画面里占多宽，照片里就有多宽。云带画在「视线与该层交点」所在的真实仰角上、透明度取该层沿视线云量（与可见度同一口径）；山脊按该点 16 方位真实遮蔽角绘制、能挡住日面；天空底色随该时刻真实太阳高度角推演（悬月也会是白天或暮色天空）。拖滑块或点▶：画面不动，天体在画面里移动，状态行会给出还有几分钟移出画面。</div>
+    </div>
+  </section>
+
+  <!-- 方向天气分析（无对准窗口时） -->
+  <section class="card cn-credits cn-reveal" id="alignDirCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>方向天气分析 <span id="alignDirTitle"></span></h3>
+    <div id="alignDirHero" class="align-hero">
+      <div class="align-hero-score">
+        <div class="align-score" id="alignDirScore">--</div>
+        <div class="align-score-label">天气可行性</div>
+      </div>
+      <div class="align-hero-body">
+        <div class="align-verdict" id="alignDirVerdict">--</div>
+        <div class="align-facts" id="alignDirFacts"></div>
+        <div class="align-reason" id="alignDirReason"></div>
+      </div>
+    </div>
+    <div class="dim-grid" id="alignDirDims"></div>
+
+    <h3 style="margin-top:16px"><i></i>天空实景预览
+      <span id="alignDirSkyNote">事件时刻 · 目标方位</span></h3>
+    <canvas id="alignDirSky" class="sky-box" width="1200" height="420"></canvas>
+    <div class="map-note" id="alignDirSkyHint">按目标方位与事件时刻渲染：绿色取景框 = 你的视场角（框外只是参照），日/月圆盘按真实角径与位置绘制，落在框外即拍不到（贴边鬼影标注差多少）；云带落在该层视线交点的真实仰角上，透明度取沿方位采样的该层云量。</div>
+
+    <h3 style="margin-top:16px"><i></i>视线剖面
+      <span id="alignDirSectionNote">沿方位 · 距离 × 海拔</span></h3>
+    <div id="alignDirSection" class="cs-box" style="height:320px"></div>
+    <div class="note" id="alignDirSectionHint"></div>
+
+    <h3 style="margin-top:16px"><i></i>当日轨迹与取景带
+      <span id="alignDirTrackNote"></span></h3>
+    <div id="alignDirTrack" class="cs-box" style="height:300px"></div>
+
+    <h3 style="margin-top:16px"><i></i>多模式一致性
+      <span>各模式沿方位可见概率</span></h3>
+    <div id="alignDirModelChart" class="cs-box" style="height:200px"></div>
+    <table class="tbl" id="alignDirModelTbl"></table>
+    <div class="note" id="alignDirModelNote"></div>
+    <h3 style="margin-top:16px"><i></i>气象与通透度</h3>
+    <div class="wx-grid" id="alignDirWxGrid"></div>
+    <h3 style="margin-top:16px"><i></i>风险提示</h3>
+    <ul class="risk-list" id="alignDirRiskList"></ul>
+    <div class="map-note">目标方向当日没有对准窗口，以上为该事件时刻的天气（方向参考）；能对准的日期见下方「下次对准」。</div>
+  </section>
+
+  <!-- 视线遮挡诊断 -->
+  <section class="card cn-reveal" id="alignSightCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>视线遮挡诊断 <span id="alignSightTitle"></span></h3>
+    <div class="map-note" id="alignSightNote"></div>
+    <table class="tbl" id="alignSightTbl"></table>
+    <h3 style="margin-top:16px"><i></i>逐气压层（ECMWF 真实层高与云量）</h3>
+    <table class="tbl" id="alignSightLevelTbl"></table>
+    <div class="map-note">
+      遮蔽云距 = 该层云壳与视线的交点距离：云出现在这个距离上才会挡住天体。
+      地平线云距/最远无云距为由云高推导的同高云几何包络（巧摄口径）。
+      云量为交点最近采样点的 ECMWF 气压层云量；可见概率 = 各层透射率连乘。
+    </div>
+  </section>
+
+  <!-- 拍摄条件分析（专业版） -->
+  <section class="card cn-craft cn-reveal" id="alignDetailCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>③ 天气可行性 <span id="alignDetailTitle"></span></h3>
+    <div class="dim-grid" id="alignDims"></div>
+    <h3 style="margin-top:16px"><i></i>多模式对比（事件时刻）</h3>
+    <table class="tbl" id="alignModelTbl"></table>
+    <div class="note" id="alignModelNote"></div>
+    <h3 style="margin-top:16px"><i></i>几何事实（供预览，不计入天气评分）</h3>
+    <div class="wx-grid" id="alignGeomGrid"></div>
+    <h3 style="margin-top:16px"><i></i>气象与通透度</h3>
+    <div class="wx-grid" id="alignWxGrid"></div>
+    <h3 style="margin-top:16px"><i></i>风险提示</h3>
+    <ul class="risk-list" id="alignRiskList"></ul>
+    <div id="alignTrackChart" style="height:260px;margin-top:12px"></div>
+    <div class="map-note">轨迹图为事件前后 ±30 分钟的真实高度角/方位角；绿色虚线为取景框上下边界（约 ±2°），红点为准时刻。</div>
+  </section>
+
+  <!-- 卫星临近校准（悬日月） -->
+  <section class="card cn-monitor cn-reveal" id="alignNowcastCard" style="display:none">
+    <div class="cn-monbar"><span>MONITOR S · 卫星</span><span class="cn-live">● LIVE</span></div>
+    <h3 class="cn-chapter"><i></i>卫星临近校准 <span>Himawari-9 B13 · JMA 实时</span></h3>
+    <div id="alignNcMeta" class="map-meta"></div>
+    <div class="nowcast-flex">
+      <img id="alignNcImg" class="nowcast-img" alt="卫星光路裁剪"
+           onerror="this.style.display='none'">
+      <ul id="alignNcJudgments" class="risk-list" style="flex:1"></ul>
+    </div>
+    <div class="sweep-ctrl" id="alignNcCtrl" style="display:none">
+      <button id="alignNcPlay" title="播放最近 80 分钟云带移动">▶</button>
+      <input type="range" id="alignNcSlider" min="0" max="7" step="1" value="0">
+      <span id="alignNcSlot">最新帧</span>
+    </div>
+    <div class="map-note" id="alignNcHint"></div>
+    <div class="map-note">亮 = 冷 = 中高云；暗 = 暖 = 晴空/低云。橙线为沿**目标方位**的光路采样；OBS = 机位、TGT = 目标端，图上另有比例尺与指北针。图源 JMA MSC，10 分钟更新；拖动时间轴可看云带朝目标方向怎么移动。</div>
+  </section>
+
+  <!-- 未来 7 天窗口概览 -->
+  <section class="card cn-reveal" id="alignWeekCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>未来 7 天方向天气 <span id="alignWeekNote"></span></h3>
+    <div class="wx-grid" id="alignWeekGrid" style="grid-template-columns:repeat(7,1fr)"></div>
+  </section>
+
+  <!-- 下次对准（悬日月日历：选不中当天时回答"哪天能拍"） -->
+  <section class="card cn-reveal" id="alignCalCard" style="display:none">
+    <h3 class="cn-chapter"><i></i>下次对准 <span id="alignCalNote"></span></h3>
+    <div class="map-note" id="alignCalNext" style="margin:8px 0">—</div>
+    <div class="wx-grid" id="alignCalGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div class="map-note">按本页目标方位与视场容差，逐日扫描未来 13 个月的日出/日落/月出/月落方位，列出能对准的日期（方位取自与窗口表同一套天文算法，未计入地形遮蔽）。点日期即跳到那天重新评估天气。</div>
+  </section>
+
+  </div><!-- /alignView -->
+
+  <section class="disclaimer cn-endcredits">
+    <div class="cn-fin" aria-hidden="true">FIN</div>
+    <b>免责声明：</b>本报告基于公开气象数据（Open-Meteo GFS/ECMWF/ICON/CMA、CAMS 气溶胶）通过八维度模型推算，
+    理论框架参考《火烧云定量预报速成》（sunsetbot.top）。仅供观赏参考，不构成任何出行或安全建议。
+  </section>
+  <footer>数据来源：Open-Meteo(GFS/ECMWF/ICON/CMA) · CAMS 气溶胶 · 本地天文算法（Meeus） | 逐光者 GlowChaser</footer>
+</main>
+
+<button id="btnTop" class="to-top" type="button" title="回到顶部" aria-label="回到顶部">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 12l6-6 6 6"/></svg>
+</button>
+
+<script src="vendor/leaflet.js?v=74"></script>
+<script src="echarts.min.js?v=74"></script>
+<script src="cinema.js?v=74"></script>
+<script src="scene-engine.js?v=74"></script>
+<script src="app.js?v=74"></script>
+<script src="sky.js?v=74"></script>
+<script src="sky_preview.js?v=74"></script>
+<script src="compare.js?v=74"></script>
+<script src="share.js?v=74"></script>
+</body>
+</html>

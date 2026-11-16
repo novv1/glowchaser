@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+requests>=2.31
+numpy>=1.26
+Pillow>=10.0
+h5py>=3.10
+tifffile>=2023.7.10

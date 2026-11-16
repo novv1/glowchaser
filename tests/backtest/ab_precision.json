@@ -1,0 +1,89 @@
+{
+ "n": 366,
+ "label_threshold": 30.0,
+ "archive_km": [
+  50,
+  100,
+  160,
+  230,
+  310,
+  400,
+  490,
+  580
+ ],
+ "variants": [
+  {
+   "points": 8,
+   "dists": [
+    50,
+    100,
+    160,
+    230,
+    310,
+    400,
+    490,
+    580
+   ],
+   "mean_abs_d_dim2": 0.0,
+   "max_abs_d_dim2": 0.0,
+   "mean_abs_d_score": 0.0,
+   "max_abs_d_score": 0.0,
+   "auc": 0.7448,
+   "brier": 0.1525,
+   "event_rate": 0.776
+  },
+  {
+   "points": 6,
+   "dists": [
+    50,
+    100,
+    230,
+    310,
+    490,
+    580
+   ],
+   "mean_abs_d_dim2": 2.9,
+   "max_abs_d_dim2": 24.8,
+   "mean_abs_d_score": 1.3,
+   "max_abs_d_score": 11.1,
+   "auc": 0.735,
+   "brier": 0.1535,
+   "event_rate": 0.776
+  },
+  {
+   "points": 4,
+   "dists": [
+    50,
+    160,
+    310,
+    580
+   ],
+   "mean_abs_d_dim2": 4.91,
+   "max_abs_d_dim2": 29.4,
+   "mean_abs_d_score": 2.2,
+   "max_abs_d_score": 13.16,
+   "auc": 0.7428,
+   "brier": 0.1524,
+   "event_rate": 0.776
+  },
+  {
+   "points": 2,
+   "dists": [
+    50,
+    580
+   ],
+   "mean_abs_d_dim2": 10.08,
+   "max_abs_d_dim2": 55.0,
+   "mean_abs_d_score": 4.51,
+   "max_abs_d_score": 24.63,
+   "auc": 0.7299,
+   "brier": 0.1543,
+   "event_rate": 0.776
+  }
+ ],
+ "reference": {
+  "points": 8,
+  "auc": 0.7448,
+  "brier": 0.1525
+ }
+}

@@ -1,0 +1,11 @@
+{
+  "qweather": {
+    "host": "https://devapi.qweather.com",
+    "key": "YOUR_QWEATHER_API_KEY"
+  },
+  "ptree": {
+    "host": "ftp://ftp.ptree.jaxa.jp",
+    "user": "YOUR_PTREE_USER",
+    "pass": "YOUR_PTREE_PASSWORD"
+  }
+}

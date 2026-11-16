@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+# Credentials — never commit. Use config_private.example.json as a template.
+# ---------------------------------------------------------------------------
+app/config_private.json
+**/config_private.json
+.env
+.env.*
+
+# ---------------------------------------------------------------------------
+# Runtime data
+# Only the labelled ground truth is kept; everything else is regenerated.
+# ---------------------------------------------------------------------------
+/data/*
+!/data/glow_labels.csv
+*.log
+__pycache__/
+*.pyc
+
+# Large binaries
+*.nc
+*.npz
+
+# ---------------------------------------------------------------------------
+# Drafts and style experiments — kept locally, excluded from the public repo
+# ---------------------------------------------------------------------------
+/playground/
+/preview-redesign/
+
+# Internal notes — only the architecture document is published
+/docs/*
+!/docs/ARCHITECTURE.md
+docs/_extract/
+
+# ---------------------------------------------------------------------------
+# Generated artefacts
+# ---------------------------------------------------------------------------
+tests/visual/out/
+tests/visual/out_dark/
+tests/visual/out_real/
+tests/backtest/*.png
+
+# Agent / editor internals
+.workbuddy/
+.codebuddy/
+/.zcode/
+.vscode/
+.idea/

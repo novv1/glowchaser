@@ -1,0 +1,53 @@
+{
+ "zhuhai_today": {
+  "probability": 3.0,
+  "verdict": "不烧",
+  "raw": null,
+  "dims": {
+   "dim1": 100.0,
+   "dim2": 97.7,
+   "dim3": 100.0,
+   "dim4": 69.1,
+   "dim5": 86.0,
+   "dim6": 82.7,
+   "dim7": 58.7,
+   "dim8": 35.0
+  },
+  "credibility": null,
+  "model_probs": {}
+ },
+ "shenzhen_tmoro_rise": {
+  "probability": 7.0,
+  "verdict": "不烧",
+  "raw": null,
+  "dims": {
+   "dim1": 73.5,
+   "dim2": 93.3,
+   "dim3": 100.0,
+   "dim4": 71.1,
+   "dim5": 42.0,
+   "dim6": 78.7,
+   "dim7": 66.3,
+   "dim8": 72.4
+  },
+  "credibility": null,
+  "model_probs": {}
+ },
+ "shanghai_case": {
+  "probability": 2.0,
+  "verdict": "不烧",
+  "raw": null,
+  "dims": {
+   "dim1": 60.4,
+   "dim2": 63.1,
+   "dim3": 100.0,
+   "dim4": 84.1,
+   "dim5": 30,
+   "dim6": 100.0,
+   "dim7": 68.0,
+   "dim8": 32.4
+  },
+  "credibility": null,
+  "model_probs": {}
+ }
+}
