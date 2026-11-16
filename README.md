@@ -1,5 +1,7 @@
 # GlowChaser
 
+**English** | [简体中文](README.zh.md)
+
 A forecasting system for **sky-glow events** — the twenty minutes when a sunset or
 sunrise actually catches fire. Built for photographers who have to commit to a
 location two hours before they know whether it is worth going.
